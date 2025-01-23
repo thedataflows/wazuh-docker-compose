@@ -7,6 +7,7 @@ This repo will deploy a single-node [Wazuh](https://wazuh.com) instance with Doc
 - [mikefarah/yq](https://github.com/mikefarah/yq)
 - [go-task](https://taskfile.dev)
 - Optional: [mise-en-place](https://mise.jdx.dev/)
+  - `./mise.run` to download and install mise in the user directory
   - `mise up` will install locally the tools specified in the [mise.toml](mise.toml) file
 - `docker` with `docker-compose` or `containerd` with `nerdctl` (with docker symlinked to it), recommended in rootlesskit mode
 
