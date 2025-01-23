@@ -13,7 +13,7 @@ set:
 vars:
   WAZUH_RELEASE: 4.10.1
   DOCKER_COMPOSE_CMD:
-    sh: which docker-compose 2>/dev/null && echo "docker-compose" || echo "docker compose"
+    sh: which docker-compose >/dev/null 2>&1 && printf "docker-compose" || printf "docker compose"
 
 tasks:
   default:
@@ -59,10 +59,18 @@ tasks:
         cd wazuh-docker/single-node
         {{.DOCKER_COMPOSE_CMD}} -f generate-indexer-certs.yml run --rm generator
 
+  wazuh:copy_env:
+    desc: Copy .env file
+    cmds:
+      - |
+        set -x
+        cp -fv .env wazuh-docker/single-node/
+
   wazuh:up:
     desc: Run Wazuh Docker Compose
     deps:
       - wazuh:generate_certs
+      - wazuh:copy_env
     cmds:
       - |
         cd wazuh-docker/single-node
@@ -73,9 +81,6 @@ tasks:
         ## Set ports
         yq '.services."wazuh.manager".ports = ["55000:55000"]' -i docker-compose.yml
         yq '.services."wazuh.dashboard".ports = ["10443:5601"]' -i docker-compose.yml
-        ## Copy .env
-        set -x
-        cp -fv ../../.env .
         ## Compose up
         {{.DOCKER_COMPOSE_CMD}} up -d
 
@@ -90,6 +95,7 @@ tasks:
     desc: Change Wazuh administrative passwords
     deps:
       - wazuh:generate_certs
+      - wazuh:copy_env
     dir: wazuh-docker/single-node
     vars:
       PASSWORD_HASH_TEMPLATE: |
