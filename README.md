@@ -21,6 +21,15 @@ API_PASSWORD=MustBeALongerPassword123#
 DASHBOARD_PASSWORD=DashboardPass
 ```
 
+Optionally, you can set the following variables:
+
+```ini
+## WAZUH_MANAGER_PORTS is an array of localport:containerport, comma separated
+WAZUH_MANAGER_PORTS=["11514:1514","11515:1515","11514:514/udp","55000:55000"]
+## WAZUH_DASHBOARD_PORTS is an array of localport:containerport, comma separated
+WAZUH_DASHBOARD_PORTS=["11443:5601"]
+```
+
 ## Run
 
 - List all tasks: `task`

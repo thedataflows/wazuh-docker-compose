@@ -40,11 +40,17 @@ tasks:
 
   wazuh:clone_docker_repo:
     desc: Clone Wazuh Docker repository
-    status:
-      - |
-        [[ -d wazuh-docker/.git ]]
     cmds:
-      - git clone https://github.com/wazuh/wazuh-docker.git -b v{{.WAZUH_RELEASE}}
+      - |
+        if [[ ! -d wazuh-docker/.git ]]; then
+          git clone https://github.com/wazuh/wazuh-docker.git -b v{{.WAZUH_RELEASE}}
+          exit 0
+        fi
+        set -x
+        cd wazuh-docker
+        git reset --hard
+        git fetch
+        git checkout v{{.WAZUH_RELEASE}}
 
   wazuh:generate_certs:
     desc: Generate Wazuh certificates
@@ -56,6 +62,7 @@ tasks:
         [[ -d wazuh-docker/single-node/config/wazuh_indexer_ssl_certs ]]
     cmds:
       - |
+        set -x
         cd wazuh-docker/single-node
         {{.DOCKER_COMPOSE_CMD}} -f generate-indexer-certs.yml run --rm generator
 
@@ -69,7 +76,6 @@ tasks:
   wazuh:up:
     desc: Run Wazuh Docker Compose
     deps:
-      - wazuh:generate_certs
       - wazuh:copy_env
     cmds:
       - |
@@ -79,9 +85,12 @@ tasks:
         ## Replace all PASSWORD lines with environment variable
         yq eval '(.. | select(tag == "!!seq") | select(.[]) | .[] | select(test("PASSWORD=.*$"))) |= sub("^(\w+)=.*$", "${1}=${$1}")' -i docker-compose.yml
         ## Set ports
-        yq '.services."wazuh.manager".ports = ["55000:55000"]' -i docker-compose.yml
-        yq '.services."wazuh.dashboard".ports = ["10443:5601"]' -i docker-compose.yml
+        WAZUH_MANAGER_PORTS=$(set +o pipefail; grep WAZUH_MANAGER_PORTS .env | cut -d= -f2 || true)
+        [[ -z "$WAZUH_MANAGER_PORTS" ]] || yq ".services.\"wazuh.manager\".ports = $WAZUH_MANAGER_PORTS" -i docker-compose.yml
+        WAZUH_DASHBOARD_PORTS=$(set +o pipefail; grep WAZUH_DASHBOARD_PORTS .env | cut -d= -f2 || true)
+        [[ -z "$WAZUH_DASHBOARD_PORTS" ]] || yq ".services.\"wazuh.dashboard\".ports = $WAZUH_DASHBOARD_PORTS" -i docker-compose.yml
         ## Compose up
+        set -x
         {{.DOCKER_COMPOSE_CMD}} up -d
 
   wazuh:down:
