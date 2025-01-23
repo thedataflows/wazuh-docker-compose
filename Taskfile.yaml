@@ -70,6 +70,9 @@ tasks:
         yq eval 'del(.. | select(has("ulimits")).ulimits)' -i docker-compose.yml
         ## Replace all PASSWORD lines with environment variable
         yq eval '(.. | select(tag == "!!seq") | select(.[]) | .[] | select(test("PASSWORD=.*$"))) |= sub("^(\w+)=.*$", "${1}=${$1}")' -i docker-compose.yml
+        ## Set ports
+        yq '.services."wazuh.manager".ports = ["55000:55000"]' -i docker-compose.yml
+        yq '.services."wazuh.dashboard".ports = ["10443:5601"]' -i docker-compose.yml
         ## Copy .env
         set -x
         cp -fv ../../.env .
