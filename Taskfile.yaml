@@ -22,7 +22,7 @@ tasks:
       - |
         for T in $(fd --type file Taskfile.yaml); do
           echo "+ $T"
-          go-task --taskfile "$T" --list-all | grep -v '^task:' | sed 's/^/  /'
+          task --taskfile "$T" --list-all | grep -v '^task:' | sed 's/^/  /'
         done
 
   prerequisites:
