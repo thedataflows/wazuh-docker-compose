@@ -89,6 +89,8 @@ tasks:
         [[ -z "$WAZUH_MANAGER_PORTS" ]] || yq ".services.\"wazuh.manager\".ports = $WAZUH_MANAGER_PORTS" -i docker-compose.yml
         WAZUH_DASHBOARD_PORTS=$(set +o pipefail; grep WAZUH_DASHBOARD_PORTS .env | cut -d= -f2 || true)
         [[ -z "$WAZUH_DASHBOARD_PORTS" ]] || yq ".services.\"wazuh.dashboard\".ports = $WAZUH_DASHBOARD_PORTS" -i docker-compose.yml
+        ## Replace ossec.conf
+        # sed -E 's,(/wazuh-config-mount/etc/ossec.conf),\1.default,' -i docker-compose.yml
         ## Compose up
         set -x
         {{.DOCKER_COMPOSE_CMD}} up -d
