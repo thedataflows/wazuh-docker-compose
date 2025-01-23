@@ -101,7 +101,7 @@ tasks:
         [[ -n "$ETC_MOUNTPOINT" ]] || exit 1
         CONF=$ETC_MOUNTPOINT/ossec.conf
         set -x
-        sudo test -f "$CONF" || sudo cp -v "$CONF.default" "$CONF"
+        sudo test -f "$CONF" || sudo cp -av "$CONF.default" "$CONF"
 
   wazuh:down:
     desc: Destroy Wazuh Docker Compose but keep the volumes
