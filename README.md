@@ -1,6 +1,6 @@
 # Wazuh deployment with Docker Compose
 
-This repo will deploy a single-node [Wazuh](https://wazuh.com) instance with Docker or Containerd using `docker-compose` or `nerdctl` respectively.
+This repo will automate the deployment of a single-node [Wazuh](https://wazuh.com) instance with Docker or Containerd using `docker-compose` or `nerdctl` respectively.
 
 ## Prerequisites
 
