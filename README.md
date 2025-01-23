@@ -1,4 +1,4 @@
-# Wazuh deployment with Docker/Containerd
+# Wazuh deployment with Docker Compose
 
 This repo will deploy a single-node [Wazuh](https://wazuh.com) instance with Docker or Containerd using `docker-compose` or `nerdctl` respectively.
 
@@ -6,7 +6,7 @@ This repo will deploy a single-node [Wazuh](https://wazuh.com) instance with Doc
 
 - [ikefarah/yq](https://github.com/mikefarah/yq)
 - [go-task](https://taskfile.dev)
-- `docker` with `docker-compose` or `containerd` with `nerdctl`, recommended in rootlesskit mode
+- `docker` with `docker-compose` or `containerd` with `nerdctl` (with docker symlinked to it), recommended in rootlesskit mode
 
 ## Environment
 
