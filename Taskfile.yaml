@@ -100,6 +100,13 @@ tasks:
         cd wazuh-docker/single-node
         {{.DOCKER_COMPOSE_CMD}} down
 
+  wazuh:start:
+    desc: Stop Wazuh Docker Compose
+    cmds:
+      - |
+        cd wazuh-docker/single-node
+        {{.DOCKER_COMPOSE_CMD}} start
+
   wazuh:stop:
     desc: Stop Wazuh Docker Compose
     cmds:
