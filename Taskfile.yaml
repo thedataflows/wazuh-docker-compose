@@ -94,11 +94,18 @@ tasks:
         {{.DOCKER_COMPOSE_CMD}} up -d
 
   wazuh:down:
-    desc: Stop Wazuh Docker Compose
+    desc: Destroy Wazuh Docker Compose but keep the volumes
     cmds:
       - |
         cd wazuh-docker/single-node
         {{.DOCKER_COMPOSE_CMD}} down
+
+  wazuh:stop:
+    desc: Stop Wazuh Docker Compose
+    cmds:
+      - |
+        cd wazuh-docker/single-node
+        {{.DOCKER_COMPOSE_CMD}} stop
 
   wazuh:change_passwords:
     desc: Change Wazuh administrative passwords
