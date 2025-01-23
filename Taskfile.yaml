@@ -1,0 +1,135 @@
+## https://taskfile.dev/usage/
+version: 3
+
+silent: true
+
+# output: prefixed
+
+set:
+  - nounset
+  - errexit
+  - pipefail
+
+vars:
+  WAZUH_RELEASE: 4.10.1
+  DOCKER_COMPOSE_CMD:
+    sh: which docker-compose 2>/dev/null && echo "docker-compose" || echo "docker compose"
+
+tasks:
+  default:
+    desc: List all tasks
+    cmds:
+      - |
+        for T in $(fd --type file Taskfile.yaml); do
+          echo "+ $T"
+          go-task --taskfile "$T" --list-all | grep -v '^task:' | sed 's/^/  /'
+        done
+
+  prerequisites:
+    desc: Check prerequisites
+    cmds:
+      - |
+        MAX_MAP_COUNT=262144
+        CURRENT_MAX_MAP_COUNT=$(sysctl --values vm.max_map_count)
+        [[ $CURRENT_MAX_MAP_COUNT -le $MAX_MAP_COUNT ]] || exit 0
+        echo "Need 'vm.max_map_count' to be at least $MAX_MAP_COUNT, but got $CURRENT_MAX_MAP_COUNT"
+        [[ ! -d /etc/sysctl.d ]] || sudo mkdir -p /etc/sysctl.d
+        FILE=/etc/sysctl.d/01-wazuh.conf
+        grep -qP "vm.max_map_count\s*=\s*$MAX_MAP_COUNT" $FILE || echo "vm.max_map_count = $MAX_MAP_COUNT" | sudo tee $FILE
+      - yq --version
+
+  wazuh:clone_docker_repo:
+    desc: Clone Wazuh Docker repository
+    status:
+      - |
+        [[ -d wazuh-docker/.git ]]
+    cmds:
+      - git clone https://github.com/wazuh/wazuh-docker.git -b v{{.WAZUH_RELEASE}}
+
+  wazuh:generate_certs:
+    desc: Generate Wazuh certificates
+    deps:
+      - prerequisites
+      - wazuh:clone_docker_repo
+    status:
+      - |
+        [[ -d wazuh-docker/single-node/config/wazuh_indexer_ssl_certs ]]
+    cmds:
+      - |
+        cd wazuh-docker/single-node
+        {{.DOCKER_COMPOSE_CMD}} -f generate-indexer-certs.yml run --rm generator
+
+  wazuh:up:
+    desc: Run Wazuh Docker Compose
+    deps:
+      - wazuh:generate_certs
+    cmds:
+      - |
+        cd wazuh-docker/single-node
+        ## Remove ulimits from docker-compose.yml
+        yq eval 'del(.. | select(has("ulimits")).ulimits)' -i docker-compose.yml
+        ## Replace all PASSWORD lines with environment variable
+        yq eval '(.. | select(tag == "!!seq") | select(.[]) | .[] | select(test("PASSWORD=.*$"))) |= sub("^(\w+)=.*$", "${1}=${$1}")' -i docker-compose.yml
+        ## Copy .env
+        set -x
+        cp -fv ../../.env .
+        ## Compose up
+        {{.DOCKER_COMPOSE_CMD}} up -d
+
+  wazuh:down:
+    desc: Stop Wazuh Docker Compose
+    cmds:
+      - |
+        cd wazuh-docker/single-node
+        {{.DOCKER_COMPOSE_CMD}} down
+
+  wazuh:change_passwords:
+    desc: Change Wazuh administrative passwords
+    deps:
+      - wazuh:generate_certs
+    dir: wazuh-docker/single-node
+    vars:
+      PASSWORD_HASH_TEMPLATE: |
+        PASSWORD=$(grep $PASSWORD_KEY .env | cut -d= -f2)
+        PASSWORD_HASH=$(docker run --rm -ti \
+          wazuh/wazuh-indexer:{{.WAZUH_RELEASE}} \
+            bash /usr/share/wazuh-indexer/plugins/opensearch-security/tools/hash.sh -p "$PASSWORD" \
+          | tail -n1 | tr -d '\r')
+        ## Update internal_users.yml with new password hash
+        yq "$PASSWORD_HASH_FIELD=\"$PASSWORD_HASH\"" -i config/wazuh_indexer/internal_users.yml
+    cmds:
+      - task: wazuh:down
+      - |
+        PASSWORD_KEY=DASHBOARD_PASSWORD
+        PASSWORD_HASH_FIELD=.kibanaserver.hash
+        {{.PASSWORD_HASH_TEMPLATE}}
+      - |
+        PASSWORD_KEY=INDEXER_PASSWORD
+        PASSWORD_HASH_FIELD=.admin.hash
+        {{.PASSWORD_HASH_TEMPLATE}}
+      - |
+        PASSWORD=$(grep API_PASSWORD .env | cut -d= -f2)
+        yq ".hosts[0].*.password=\"$PASSWORD\"" -i config/wazuh_dashboard/wazuh.yml
+      - task: wazuh:up
+
+  wazuh:post_change_passwords:
+    desc: Post-change Wazuh administrative passwords
+    cmds:
+      - |
+        docker exec -it -e JAVA_HOME=/usr/share/wazuh-indexer/jdk \
+          single-node-wazuh.indexer-1 bash \
+            /usr/share/wazuh-indexer/plugins/opensearch-security/tools/securityadmin.sh \
+              -cd /usr/share/wazuh-indexer/opensearch-security/ \
+              -nhnv \
+              -cacert /usr/share/wazuh-indexer/certs/root-ca.pem \
+              -cert /usr/share/wazuh-indexer/certs/admin.pem \
+              -key /usr/share/wazuh-indexer/certs/admin-key.pem \
+              -p 9200 \
+              -icl
+
+  wazuh:logs:
+    desc: Show Wazuh logs
+    cmds:
+      - |
+        cd wazuh-docker/single-node
+        {{.DOCKER_COMPOSE_CMD}} logs -f

@@ -1,0 +1,3 @@
+wazuh-docker/
+wazuh_indexer_ssl_certs/
+.env
