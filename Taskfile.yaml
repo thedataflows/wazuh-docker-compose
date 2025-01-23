@@ -80,20 +80,28 @@ tasks:
     cmds:
       - |
         cd wazuh-docker/single-node
-        ## Remove ulimits from docker-compose.yml
-        yq eval 'del(.. | select(has("ulimits")).ulimits)' -i docker-compose.yml
+        ## Remove version
+        yq 'del(.version)' -i docker-compose.yml
+        ## Remove ulimits
+        yq 'del(.. | select(has("ulimits")).ulimits)' -i docker-compose.yml
         ## Replace all PASSWORD lines with environment variable
-        yq eval '(.. | select(tag == "!!seq") | select(.[]) | .[] | select(test("PASSWORD=.*$"))) |= sub("^(\w+)=.*$", "${1}=${$1}")' -i docker-compose.yml
+        yq '(.. | select(tag == "!!seq") | select(.[]) | .[] | select(test("PASSWORD=.*$"))) |= sub("^(\w+)=.*$", "${1}=${$1}")' -i docker-compose.yml
         ## Set ports
         WAZUH_MANAGER_PORTS=$(set +o pipefail; grep WAZUH_MANAGER_PORTS .env | cut -d= -f2 || true)
         [[ -z "$WAZUH_MANAGER_PORTS" ]] || yq ".services.\"wazuh.manager\".ports = $WAZUH_MANAGER_PORTS" -i docker-compose.yml
         WAZUH_DASHBOARD_PORTS=$(set +o pipefail; grep WAZUH_DASHBOARD_PORTS .env | cut -d= -f2 || true)
         [[ -z "$WAZUH_DASHBOARD_PORTS" ]] || yq ".services.\"wazuh.dashboard\".ports = $WAZUH_DASHBOARD_PORTS" -i docker-compose.yml
-        ## Replace ossec.conf
-        # sed -E 's,(/wazuh-config-mount/etc/ossec.conf),\1.default,' -i docker-compose.yml
+        ## Replace ossec.conf mount because the container init scripts always overwrites the target file
+        sed -E 's,(/wazuh-config-mount/etc/ossec.conf$),\1.default,' -i docker-compose.yml
         ## Compose up
         set -x
         {{.DOCKER_COMPOSE_CMD}} up -d
+      - |
+        ETC_MOUNTPOINT=$(docker volume inspect single-node_wazuh_etc | yq '.[].Mountpoint')
+        [[ -n "$ETC_MOUNTPOINT" ]] || exit 1
+        CONF=$ETC_MOUNTPOINT/ossec.conf
+        set -x
+        sudo test -f "$CONF" || sudo cp -v "$CONF.default" "$CONF"
 
   wazuh:down:
     desc: Destroy Wazuh Docker Compose but keep the volumes
