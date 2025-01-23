@@ -1,0 +1,5 @@
+[tools]
+## https://github.com/mikefarah/yq/releases
+"aqua:mikefarah/yq" = '4'
+## https://github.com/go-task/task/releases
+"aqua:go-task/task" = '3'
