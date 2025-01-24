@@ -37,6 +37,8 @@ WAZUH_DASHBOARD_PORTS=["11443:5601"]
   - `task wazuh:change_passwords` - will stop and start the Wazuh containers
   - Wait for the indexer to become ready
   - `task wazuh:post_change_passwords`
-- Start Wazuh: `task wazuh:up`
-- Stop Wazuh: `task wazuh:down`
+- Deploy Wazuh (re-create the containers): `task wazuh:up`
+- Destroy Wazuh (but keep the volumes): `task wazuh:down`
+- Start Wazuh: `task wazuh:start`
+- Stop Wazuh: `task wazuh:stop`
 - Watch logs: `task wazuh:logs`
